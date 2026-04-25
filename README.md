@@ -1,3 +1,5 @@
+![KSP Scripts Collection](sumnail.png)
+
 # kontakt_test
 
 Native Instruments Kontakt 用の KSP (Kontakt Script Processor) スクリプト集。
