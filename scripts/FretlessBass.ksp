@@ -1,0 +1,258 @@
+{ ============================================================
+  FretlessBass.ksp
+  フレットレスベース用 Kontakt Script Processor スクリプト
+
+  機能:
+    - ポルタメント (常時 / レガート選択)
+    - スライドイン (ノート到達前の滑らかなピッチ接近)
+    - ビブラート (Mod Wheel で深さ制御)
+    - エクスプレッション (CC11 でダイナミクス制御)
+  ============================================================ }
+
+on init
+    set_script_title("FretlessBass")
+
+    { ------ ポルタメント UI ------ }
+    declare ui_label $lbl_porta (2, 1)
+    set_text($lbl_porta, "PORTAMENTO")
+
+    declare ui_switch $sw_portamento ("ON")
+    $sw_portamento := 1
+
+    declare ui_menu $menu_porta_mode ("Mode")
+    add_menu_item($menu_porta_mode, "Always", 0)
+    add_menu_item($menu_porta_mode, "Legato Only", 1)
+    $menu_porta_mode := 1
+
+    declare ui_knob $knob_porta_time ("Time", 10, 2000, 1)
+    set_knob_unit($knob_porta_time, $KNOB_UNIT_MS)
+    set_knob_defval($knob_porta_time, 150)
+    $knob_porta_time := 150
+
+    { ------ スライドイン UI ------ }
+    declare ui_label $lbl_slide (2, 1)
+    set_text($lbl_slide, "SLIDE IN")
+
+    declare ui_switch $sw_slide ("ON")
+    $sw_slide := 1
+
+    declare ui_knob $knob_slide_range ("Range", 1, 12, 1)
+    set_knob_defval($knob_slide_range, 4)
+    $knob_slide_range := 4
+
+    declare ui_knob $knob_slide_time ("Time", 10, 300, 1)
+    set_knob_unit($knob_slide_time, $KNOB_UNIT_MS)
+    set_knob_defval($knob_slide_time, 60)
+    $knob_slide_time := 60
+
+    { ------ ビブラート UI ------ }
+    declare ui_label $lbl_vib (2, 1)
+    set_text($lbl_vib, "VIBRATO")
+
+    declare ui_knob $knob_vib_depth ("Depth", 0, 100, 1)
+    set_knob_defval($knob_vib_depth, 0)
+    $knob_vib_depth := 0
+
+    declare ui_knob $knob_vib_rate ("Rate", 10, 80, 1)
+    set_knob_defval($knob_vib_rate, 35)
+    $knob_vib_rate := 35
+
+    { ------ 内部変数 ------ }
+
+    { 1000 = 1 semitone in change_tune units }
+    declare const $SEMITONE := 1000
+
+    { アニメーションのステップ数 }
+    declare const $ANIM_STEPS := 25
+
+    { 直前のノート番号 (-1 = なし) }
+    declare $prev_note
+    $prev_note := -1
+
+    { 各ノートの押鍵状態 (1 = 押されている) }
+    declare %is_held[128]
+
+    { ビブラートのフェーズ・方向 }
+    declare $vib_phase
+    declare $vib_direction
+    $vib_phase := 0
+    $vib_direction := 1
+
+    { 初期化ループ }
+    declare $i
+    $i := 0
+    while ($i < 128)
+        %is_held[$i] := 0
+        inc($i)
+    end while
+
+end on
+
+{ ============================================================
+  ノートオン処理
+  ============================================================ }
+on note
+
+    declare local $note
+    declare local $vel
+    declare local $offset
+    declare local $slide_offset
+    declare local $porta_offset
+    declare local $step_size
+    declare local $wait_us
+    declare local $j
+
+    $note := $EVENT_NOTE
+    $vel  := $EVENT_VELOCITY
+
+    { 押鍵記録 }
+    %is_held[$note] := 1
+
+    { ==========================================
+      スライドイン
+      直前ノートがある場合、数セミトーン離れた
+      ピッチから滑らかに目標ノートへ接近する
+      ========================================== }
+    if ($sw_slide = 1 and $prev_note # -1)
+
+        { 接近方向を判定 }
+        if ($note > $prev_note)
+            { 下から上へ接近 }
+            $slide_offset := -($knob_slide_range * $SEMITONE)
+        else
+            { 上から下へ接近 }
+            $slide_offset := $knob_slide_range * $SEMITONE
+        end if
+
+        { 開始ピッチをオフセット位置にセット }
+        change_tune($EVENT_ID, $slide_offset, 0)
+
+        { アニメーション }
+        $step_size := $slide_offset / $ANIM_STEPS
+        $wait_us   := ($knob_slide_time * 1000) / $ANIM_STEPS
+        $offset    := $slide_offset
+
+        $j := 0
+        while ($j < $ANIM_STEPS)
+            $offset := $offset - $step_size
+            change_tune($EVENT_ID, $offset, 0)
+            wait($wait_us)
+            inc($j)
+        end while
+
+        { 目標ピッチ (0) に正確に合わせる }
+        change_tune($EVENT_ID, 0, 0)
+
+    end if
+
+    { ==========================================
+      ポルタメント
+      直前のノートからピッチをグライドさせる
+      ========================================== }
+    if ($sw_portamento = 1 and $prev_note # -1)
+
+        { Legato モードのとき: 直前ノートが押されている場合のみ適用 }
+        if ($menu_porta_mode = 0 or %is_held[$prev_note] = 1)
+
+            { 直前ノートとの差分だけオフセット }
+            $porta_offset := ($prev_note - $note) * $SEMITONE
+
+            { スライドイン後はすでにピッチが 0 なので相対的に加算 }
+            if ($sw_slide = 1)
+                change_tune($EVENT_ID, $porta_offset, 1)
+            else
+                change_tune($EVENT_ID, $porta_offset, 0)
+            end if
+
+            { アニメーションでピッチを目標値 (0) へ戻す }
+            $step_size := $porta_offset / $ANIM_STEPS
+            $wait_us   := ($knob_porta_time * 1000) / $ANIM_STEPS
+            $offset    := $porta_offset
+
+            $j := 0
+            while ($j < $ANIM_STEPS)
+                $offset := $offset - $step_size
+                change_tune($EVENT_ID, $offset, 0)
+                wait($wait_us)
+                inc($j)
+            end while
+
+            change_tune($EVENT_ID, 0, 0)
+
+        end if
+
+    end if
+
+    { ==========================================
+      ビブラート (Mod Wheel = 0 のとき自動ビブラート)
+      ========================================== }
+    if ($knob_vib_depth > 0 and $CC[1] = 0)
+        $j := 0
+        while (%is_held[$note] = 1)
+            $vib_phase := $vib_phase + $vib_direction
+            if ($vib_phase > $knob_vib_depth or $vib_phase < -$knob_vib_depth)
+                $vib_direction := -$vib_direction
+            end if
+            change_tune($EVENT_ID, $vib_phase * 100, 0)
+            { Rate を Hz に近似: 1000000 us / (rate * 4 steps/cycle) }
+            wait(1000000 / ($knob_vib_rate * 4))
+        end while
+        { ノート離鍵後にピッチをリセット }
+        change_tune($EVENT_ID, 0, 0)
+    end if
+
+    { 直前ノート更新 }
+    $prev_note := $note
+
+end on
+
+{ ============================================================
+  ノートオフ処理
+  ============================================================ }
+on release
+
+    %is_held[$EVENT_NOTE] := 0
+
+    { 直前ノートが離鍵された場合はリセット }
+    if ($EVENT_NOTE = $prev_note)
+        $prev_note := -1
+    end if
+
+end on
+
+{ ============================================================
+  CC (コントローラー) 処理
+  ============================================================ }
+on controller
+
+    { CC1 (Mod Wheel): ビブラート深さをリアルタイム制御 }
+    if ($CC_NUM = 1)
+        { Mod Wheel が入っている間はリアルタイムビブラートをノート側で処理 }
+        { (on note 内のビブラートループは CC[1] = 0 のときのみ動作) }
+    end if
+
+    { CC11 (Expression): 全ノートのボリューム }
+    if ($CC_NUM = 11)
+        change_vol($ALL_EVENTS, cc2vol($CC[11]), 1)
+    end if
+
+    { CC64 (Sustain Pedal): ポルタメントのリセット抑制 }
+    if ($CC_NUM = 64)
+        if ($CC[64] < 64)
+            { ペダルを離したら prev_note リセット }
+            $prev_note := -1
+        end if
+    end if
+
+end on
+
+{ ============================================================
+  UI コントロール変更時の処理
+  ============================================================ }
+on ui_control ($sw_portamento)
+    { スイッチの状態表示を更新 }
+end on
+
+on ui_control ($sw_slide)
+    { スイッチの状態表示を更新 }
+end on
