@@ -1,6 +1,5 @@
 on init
 
-    { --- Portamento --- }
     declare ui_knob $knob_porta_time (0, 2000, 1)
     set_text($knob_porta_time, "Porta")
     set_knob_unit($knob_porta_time, $KNOB_UNIT_MS)
@@ -11,7 +10,6 @@ on init
     set_text($sw_legato, "Legato")
     $sw_legato := 1
 
-    { --- Slide-in --- }
     declare ui_switch $sw_slide
     set_text($sw_slide, "Slide")
     $sw_slide := 0
@@ -27,7 +25,6 @@ on init
     set_knob_defval($knob_slide_time, 60)
     $knob_slide_time := 60
 
-    { --- Vibrato --- }
     declare ui_knob $knob_vib_depth (0, 50, 1)
     set_text($knob_vib_depth, "Vib.D")
     set_knob_defval($knob_vib_depth, 0)
@@ -38,7 +35,6 @@ on init
     set_knob_defval($knob_vib_rate, 35)
     $knob_vib_rate := 35
 
-    { --- Internal --- }
     declare const $SEMITONE := 100000
     declare const $STEPS := 20
 
@@ -71,18 +67,15 @@ on note
     $prev_note := $note_num
     %held[$note_num] := 1
 
-    { Slide-in: 直前ノートの方向から滑り込む }
     if ($sw_slide = 1 and $last_note # -1)
         if ($note_num > $last_note)
             $offset := -($knob_slide_range * $SEMITONE)
         else
             $offset := $knob_slide_range * $SEMITONE
         end if
-
         change_tune($EVENT_ID, $offset, 0)
         $step := $offset / $STEPS
         $wait_us := ($knob_slide_time * 1000) / $STEPS
-
         $k := 0
         while ($k < $STEPS)
             $offset := $offset - $step
@@ -93,15 +86,12 @@ on note
         change_tune($EVENT_ID, 0, 0)
     end if
 
-    { Portamento: 直前ノートからグライド }
     if ($knob_porta_time > 0 and $last_note # -1)
         if ($sw_legato = 0 or %held[$last_note] = 1)
             $offset := ($last_note - $note_num) * $SEMITONE
             change_tune($EVENT_ID, $offset, 0)
-
             $step := $offset / $STEPS
             $wait_us := ($knob_porta_time * 1000) / $STEPS
-
             $k := 0
             while ($k < $STEPS)
                 $offset := $offset - $step
@@ -113,7 +103,6 @@ on note
         end if
     end if
 
-    { Vibrato: Vib.Dノブ or モッドホイール(CC1)で深さ制御 }
     $phase := 0
     $dir := 1
     while ($NOTE_HELD = 1)
