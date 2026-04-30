@@ -96,7 +96,4 @@ on release
 end on
 
 on controller
-    if ($CC_NUM = 11)
-        change_vol($ALL_EVENTS, ($CC[11] * 1000000) / 127, 0)
-    end if
 end on
