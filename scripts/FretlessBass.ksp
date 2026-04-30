@@ -7,10 +7,6 @@ on init
     set_knob_defval($knob_porta_time, 150)
     $knob_porta_time := 150
 
-    declare ui_switch $sw_legato
-    set_text($sw_legato, "Legato")
-    $sw_legato := 1
-
     declare ui_knob $knob_vib_depth (0, 50, 1)
     set_text($knob_vib_depth, "Vib.D")
     set_knob_defval($knob_vib_depth, 0)
@@ -28,14 +24,6 @@ on init
     declare $prev_note
     $prev_note := -1
 
-    declare %held[128]
-    declare $i
-    $i := 0
-    while ($i < 128)
-        %held[$i] := 0
-        inc($i)
-    end while
-
     declare polyphonic $note_num
     declare polyphonic $last_note
     declare polyphonic $offset
@@ -51,26 +39,23 @@ on note
     $note_num := $EVENT_NOTE
     $last_note := $prev_note
     $prev_note := $note_num
-    %held[$note_num] := 1
 
     { Portamento }
     if ($knob_porta_time > 0 and $last_note # -1)
-        if ($sw_legato = 0 or %held[$last_note] = 1)
-            $offset := ($last_note - $note_num) * $SEMITONE
+        $offset := ($last_note - $note_num) * $SEMITONE
+        change_tune($EVENT_ID, $offset, 0)
+
+        $step := $offset / $STEPS
+        $wait_us := ($knob_porta_time * 1000) / $STEPS
+
+        $k := 0
+        while ($k < $STEPS)
+            $offset := $offset - $step
             change_tune($EVENT_ID, $offset, 0)
-
-            $step := $offset / $STEPS
-            $wait_us := ($knob_porta_time * 1000) / $STEPS
-
-            $k := 0
-            while ($k < $STEPS)
-                $offset := $offset - $step
-                change_tune($EVENT_ID, $offset, 0)
-                wait($wait_us)
-                inc($k)
-            end while
-            change_tune($EVENT_ID, 0, 0)
-        end if
+            wait($wait_us)
+            inc($k)
+        end while
+        change_tune($EVENT_ID, 0, 0)
     end if
 
     { Vibrato }
@@ -88,9 +73,4 @@ on note
         change_tune($EVENT_ID, 0, 0)
     end if
 
-end on
-
-on release
-    %held[$note_num] := 0
-    $prev_note := -1
 end on
