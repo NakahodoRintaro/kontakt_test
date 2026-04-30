@@ -21,7 +21,8 @@ on init
     set_knob_defval($knob_vib_rate, 35)
     $knob_vib_rate := 35
 
-    declare const $SEMITONE := 1000
+    { 1 semitone = 100000 millicents }
+    declare const $SEMITONE := 100000
     declare const $STEPS := 20
 
     declare $prev_note
@@ -35,24 +36,25 @@ on init
         inc($i)
     end while
 
+    declare polyphonic $last_note
+    declare polyphonic $offset
+    declare polyphonic $step
+    declare polyphonic $wait_us
+    declare polyphonic $k
+    declare polyphonic $phase
+    declare polyphonic $dir
+
 end on
 
 on note
-    declare $n
-    declare $offset
-    declare $step
-    declare $wait_us
-    declare $k
-    declare $phase
-    declare $dir
-
-    $n := $EVENT_NOTE
-    %held[$n] := 1
+    $last_note := $prev_note
+    $prev_note := $EVENT_NOTE
+    %held[$EVENT_NOTE] := 1
 
     { Portamento }
-    if ($knob_porta_time > 0 and $prev_note # -1)
-        if ($sw_legato = 0 or %held[$prev_note] = 1)
-            $offset := ($prev_note - $n) * $SEMITONE
+    if ($knob_porta_time > 0 and $last_note # -1)
+        if ($sw_legato = 0 or %held[$last_note] = 1)
+            $offset := ($last_note - $EVENT_NOTE) * $SEMITONE
             change_tune($EVENT_ID, $offset, 0)
 
             $step := $offset / $STEPS
@@ -65,7 +67,6 @@ on note
                 wait($wait_us)
                 inc($k)
             end while
-
             change_tune($EVENT_ID, 0, 0)
         end if
     end if
@@ -74,7 +75,7 @@ on note
     if ($knob_vib_depth > 0)
         $phase := 0
         $dir := 1
-        while (%held[$n] = 1)
+        while ($NOTE_HELD = 1)
             $phase := $phase + $dir
             if ($phase > $knob_vib_depth or $phase < -$knob_vib_depth)
                 $dir := -$dir
@@ -85,7 +86,6 @@ on note
         change_tune($EVENT_ID, 0, 0)
     end if
 
-    $prev_note := $n
 end on
 
 on release
@@ -93,7 +93,4 @@ on release
     if ($EVENT_NOTE = $prev_note)
         $prev_note := -1
     end if
-end on
-
-on controller
 end on
