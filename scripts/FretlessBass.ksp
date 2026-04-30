@@ -1,39 +1,68 @@
 on init
 
-    declare ui_knob $knob_porta_time (0, 2000, 1)
-    set_text($knob_porta_time, "Porta")
-    set_knob_unit($knob_porta_time, $KNOB_UNIT_MS)
-    set_knob_defval($knob_porta_time, 150)
-    $knob_porta_time := 150
+    declare ui_label $lbl_porta (1, 1)
+    set_text($lbl_porta, "PORTA")
+    set_control_par(get_ui_id($lbl_porta), $CONTROL_PAR_TEXT_ALIGNMENT, 1)
+    move_control($lbl_porta, 1, 1)
 
     declare ui_switch $sw_legato
     set_text($sw_legato, "Legato")
     $sw_legato := 1
+    move_control($sw_legato, 2, 1)
+    set_control_help($sw_legato, "ON: portamento only when previous note is held")
+
+    declare ui_label $lbl_slide (2, 1)
+    set_text($lbl_slide, "SLIDE IN")
+    set_control_par(get_ui_id($lbl_slide), $CONTROL_PAR_TEXT_ALIGNMENT, 1)
+    move_control($lbl_slide, 3, 1)
+
+    declare ui_label $lbl_vib (2, 1)
+    set_text($lbl_vib, "VIBRATO")
+    set_control_par(get_ui_id($lbl_vib), $CONTROL_PAR_TEXT_ALIGNMENT, 1)
+    move_control($lbl_vib, 5, 1)
+
+    declare ui_knob $knob_porta_time (0, 2000, 1)
+    set_text($knob_porta_time, "Time")
+    set_knob_unit($knob_porta_time, $KNOB_UNIT_MS)
+    set_knob_defval($knob_porta_time, 150)
+    $knob_porta_time := 150
+    move_control($knob_porta_time, 1, 2)
+    set_control_help($knob_porta_time, "Glide time. Set to 0 to disable.")
 
     declare ui_switch $sw_slide
-    set_text($sw_slide, "Slide")
+    set_text($sw_slide, "ON")
     $sw_slide := 0
+    move_control($sw_slide, 2, 2)
+    set_control_help($sw_slide, "Enable slide-in approach from below or above")
 
     declare ui_knob $knob_slide_range (1, 12, 1)
-    set_text($knob_slide_range, "Sld.R")
+    set_text($knob_slide_range, "Range")
     set_knob_defval($knob_slide_range, 3)
     $knob_slide_range := 3
+    move_control($knob_slide_range, 3, 2)
+    set_control_help($knob_slide_range, "Slide-in range in semitones")
 
     declare ui_knob $knob_slide_time (10, 300, 1)
-    set_text($knob_slide_time, "Sld.T")
+    set_text($knob_slide_time, "Time")
     set_knob_unit($knob_slide_time, $KNOB_UNIT_MS)
     set_knob_defval($knob_slide_time, 60)
     $knob_slide_time := 60
+    move_control($knob_slide_time, 4, 2)
+    set_control_help($knob_slide_time, "Slide-in duration")
 
     declare ui_knob $knob_vib_depth (0, 50, 1)
-    set_text($knob_vib_depth, "Vib.D")
+    set_text($knob_vib_depth, "Depth")
     set_knob_defval($knob_vib_depth, 0)
     $knob_vib_depth := 0
+    move_control($knob_vib_depth, 5, 2)
+    set_control_help($knob_vib_depth, "Vibrato depth. CC1 mod wheel overrides when active.")
 
     declare ui_knob $knob_vib_rate (10, 80, 1)
-    set_text($knob_vib_rate, "Vib.R")
+    set_text($knob_vib_rate, "Rate")
     set_knob_defval($knob_vib_rate, 35)
     $knob_vib_rate := 35
+    move_control($knob_vib_rate, 6, 2)
+    set_control_help($knob_vib_rate, "Vibrato rate")
 
     declare const $SEMITONE := 100000
     declare const $STEPS := 20
