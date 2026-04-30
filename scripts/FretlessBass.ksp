@@ -36,6 +36,7 @@ on init
         inc($i)
     end while
 
+    declare polyphonic $note_num
     declare polyphonic $last_note
     declare polyphonic $offset
     declare polyphonic $step
@@ -47,14 +48,15 @@ on init
 end on
 
 on note
+    $note_num := $EVENT_NOTE
     $last_note := $prev_note
-    $prev_note := $EVENT_NOTE
-    %held[$EVENT_NOTE] := 1
+    $prev_note := $note_num
+    %held[$note_num] := 1
 
     { Portamento }
     if ($knob_porta_time > 0 and $last_note # -1)
         if ($sw_legato = 0 or %held[$last_note] = 1)
-            $offset := ($last_note - $EVENT_NOTE) * $SEMITONE
+            $offset := ($last_note - $note_num) * $SEMITONE
             change_tune($EVENT_ID, $offset, 0)
 
             $step := $offset / $STEPS
@@ -89,6 +91,6 @@ on note
 end on
 
 on release
-    %held[$EVENT_NOTE] := 0
+    %held[$note_num] := 0
     $prev_note := -1
 end on
