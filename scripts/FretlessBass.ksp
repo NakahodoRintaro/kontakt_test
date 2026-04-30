@@ -90,7 +90,5 @@ end on
 
 on release
     %held[$EVENT_NOTE] := 0
-    if ($EVENT_NOTE = $prev_note)
-        $prev_note := -1
-    end if
+    $prev_note := -1
 end on
