@@ -1,5 +1,8 @@
 on init
 
+    make_perfview
+    set_ui_height_px(104)
+
     declare ui_label $lbl_porta (1, 1)
     set_text($lbl_porta, "PORTA")
     set_control_par(get_ui_id($lbl_porta), $CONTROL_PAR_TEXT_ALIGNMENT, 1)
